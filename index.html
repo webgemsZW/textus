@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Textus</title>
+<meta name="theme-color" content="#14171c">
+<meta name="description" content="Learn Biblical Greek — Textus">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Textus">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="topbar">
+  <button id="app-title" type="button" title="Tap to switch between the English and Greek spelling">
+    <span id="app-title-text"></span> <span id="app-version" class="version-badge"></span>
+  </button>
+  <button id="theme-toggle" type="button"></button>
+</div>
+
+<main id="app" role="main"></main>
+
+<nav id="bottom-nav">
+  <button type="button" class="nav-btn" data-route="home">Home</button>
+  <button type="button" class="nav-btn" data-route="review">Review</button>
+  <button type="button" class="nav-btn" data-route="practice">Practice</button>
+  <button type="button" class="nav-btn" data-route="lesson">Lesson</button>
+  <button type="button" class="nav-btn" data-route="reference">Reference</button>
+  <button type="button" class="nav-btn" data-route="settings">Settings</button>
+</nav>
+
+<script src="version.js"></script>
+<script src="data.js"></script>
+<script src="srs.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

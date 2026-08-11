@@ -1,0 +1,781 @@
+/* Textus — visual design: calm, high-contrast, dark by default (spec §8) */
+
+:root {
+  --bg: #14171c;
+  --surface: #1c212a;
+  --surface-raised: #242a35;
+  --border: #333c4a;
+  --text: #eceef0;
+  --text-dim: #9aa4b2;
+  --text-faint: #6b7684;
+  --accent: #7fb3e0;
+  --accent-strong: #a8cdec;
+  --good: #6fbf8b;
+  --bad: #e0806f;
+  --hard: #e0c06f;
+  --easy: #7fb3e0;
+  --font-greek: 'Gentium Plus', 'Cardo', 'Noto Serif', 'Athena Unicode', 'Palatino Linotype', 'Times New Roman', Georgia, serif;
+  --font-ui: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --radius: 14px;
+  --gap: 16px;
+}
+
+[data-theme="light"] {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --surface-raised: #eef0ee;
+  --border: #d8d6cf;
+  --text: #1d2126;
+  --text-dim: #565f6b;
+  --text-faint: #838d99;
+  --accent: #2f6fa3;
+  --accent-strong: #1f5a8a;
+  --good: #2f8a56;
+  --bad: #b4432f;
+  --hard: #a3801f;
+  --easy: #2f6fa3;
+}
+
+* { box-sizing: border-box; }
+
+/* ---------- background texture ----------
+   A manuscript-inspired ground: a faint grid of Greek crosses with diamond points
+   between them, over a soft vignette suggesting aged parchment. Inline SVG data URIs
+   only — nothing is fetched over the network. Kept at very low opacity so it reads as
+   texture rather than decoration, and body text always sits on solid card surfaces. */
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.1'%3E%3Cpath d='M18 8v20M8 18h20'/%3E%3Cpath d='M54 44v20M44 54h20'/%3E%3C/g%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M54 14l3 4-3 4-3-4z'/%3E%3Cpath d='M18 50l3 4-3 4-3-4z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 72px 72px;
+  opacity: 0.045;
+}
+
+/* Vignette sits above the pattern, below content — softens the corners. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(127, 179, 224, 0.07), transparent 62%),
+    radial-gradient(ellipse at 50% 100%, rgba(0, 0, 0, 0.22), transparent 68%);
+}
+
+[data-theme="light"] body::before,
+:root[data-theme="light"] body::before {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23000000' stroke-width='1.1'%3E%3Cpath d='M18 8v20M8 18h20'/%3E%3Cpath d='M54 44v20M44 54h20'/%3E%3C/g%3E%3Cg fill='%23000000'%3E%3Cpath d='M54 14l3 4-3 4-3-4z'/%3E%3Cpath d='M18 50l3 4-3 4-3-4z'/%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.055;
+}
+
+:root[data-theme="light"] body::after {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(160, 130, 80, 0.10), transparent 62%),
+    radial-gradient(ellipse at 50% 100%, rgba(120, 95, 55, 0.12), transparent 68%);
+}
+
+/* The sticky bars would otherwise let the texture scroll visibly behind them. */
+#topbar, #bottom-nav {
+  background: var(--bg);
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+  font-family: var(--font-ui);
+  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+}
+
+/* The page background lives on html alone. If body carried it too, body's background
+   would paint over the z-index:-1 texture layer below and hide it entirely. */
+html {
+  background: var(--bg);
+}
+
+body {
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+#topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px calc(10px + env(safe-area-inset-top, 0px));
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+#app-title {
+  font-family: var(--font-greek);
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Polytonic title needs a touch more room than the Latin form. */
+#app-title .title-greek {
+  letter-spacing: 0.01em;
+}
+
+#theme-toggle {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+#app {
+  flex: 1;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px 18px 40px;
+}
+
+#bottom-nav {
+  display: flex;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.nav-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  padding: 12px 2px 10px;
+  cursor: pointer;
+  border-top: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.nav-btn.active {
+  color: var(--accent);
+  border-top-color: var(--accent);
+}
+
+/* ---------- generic building blocks ---------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: var(--gap);
+}
+
+.card h2, .card h3 { margin-top: 0; }
+
+.btn {
+  display: inline-block;
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 20px;
+  font-size: 1rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  text-align: center;
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+  background: var(--accent);
+  color: #0d1520;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-block { display: block; width: 100%; }
+
+.btn-lg { padding: 22px; font-size: 1.15rem; }
+
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.muted { color: var(--text-dim); }
+.faint { color: var(--text-faint); font-size: 0.85rem; }
+
+.tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-family: var(--font-ui);
+}
+
+/* ---------- Greek text ---------- */
+
+.greek-lg {
+  font-family: var(--font-greek);
+  font-size: 3rem;
+  line-height: 1.25;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.greek-md {
+  font-family: var(--font-greek);
+  font-size: 1.8rem;
+}
+
+.translit {
+  font-family: var(--font-greek);
+  font-style: italic;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+}
+
+.pron {
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  font-size: 1rem;
+  text-transform: none;
+}
+
+.gloss {
+  font-size: 1.15rem;
+  color: var(--text);
+}
+
+/* ---------- home / dashboard ---------- */
+
+.due-cta {
+  text-align: center;
+  padding: 30px 20px;
+}
+
+.due-count {
+  font-size: 3.2rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  text-align: center;
+  gap: 10px;
+}
+
+.stat {
+  flex: 1;
+}
+
+.stat .num { font-size: 1.5rem; font-weight: 700; }
+.stat .label { font-size: 0.78rem; color: var(--text-faint); }
+
+/* ---------- lesson ---------- */
+
+.lesson-item {
+  text-align: center;
+  padding: 20px 10px 10px;
+}
+
+.lesson-progress {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+/* Word lesson: the whole word presented at once — sound and meaning lead, with the
+   letter breakdown connecting it back to the alphabet, and the scholarly detail
+   (transliteration, frequency) subordinate at the foot. */
+
+.pron-lead {
+  font-size: 1.15rem;
+  margin-top: 12px;
+  color: var(--accent);
+}
+
+.gloss-lead {
+  font-size: 1.35rem;
+  margin-top: 10px;
+}
+
+.breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.breakdown-chip {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px 4px;
+  min-width: 46px;
+  background: var(--surface-raised);
+}
+
+.breakdown-glyph {
+  font-family: var(--font-greek);
+  font-size: 1.4rem;
+  line-height: 1.15;
+}
+
+.breakdown-name {
+  font-size: 0.6rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.breakdown-chip.is-diphthong {
+  border-color: var(--accent);
+}
+
+.breakdown-chip.is-diphthong .breakdown-name {
+  color: var(--accent);
+}
+
+.word-footnote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.freq-tag { margin-top: 10px; }
+
+.lesson-nav {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+}
+
+.lesson-nav .btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ---------- review ---------- */
+
+.review-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.card-type-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.review-prompt {
+  text-align: center;
+  padding: 30px 10px;
+}
+
+.mc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+@media (max-width: 420px) {
+  .mc-grid { grid-template-columns: 1fr; }
+}
+
+.mc-option {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 12px;
+  font-size: 1.05rem;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.mc-option.correct { border-color: var(--good); background: color-mix(in srgb, var(--good) 18%, var(--surface)); }
+.mc-option.incorrect { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 18%, var(--surface)); }
+
+.typed-input {
+  width: 100%;
+  font-size: 1.3rem;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+
+.typed-input.greek { font-family: var(--font-greek); }
+
+.answer-reveal {
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.answer-reveal.correct { border-color: var(--good); }
+.answer-reveal.incorrect { border-color: var(--bad); }
+
+.diff-compare { display: flex; gap: 24px; margin-top: 10px; flex-wrap: wrap; }
+.diff-compare .greek-md .diff-char { background: color-mix(in srgb, var(--bad) 35%, transparent); border-radius: 3px; }
+
+.grade-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.grade-btn {
+  padding: 14px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.grade-btn.grade-again { color: var(--bad); }
+.grade-btn.grade-hard { color: var(--hard); }
+.grade-btn.grade-good { color: var(--good); border-color: var(--good); background: color-mix(in srgb, var(--good) 12%, var(--surface)); }
+.grade-btn.grade-easy { color: var(--easy); }
+
+/* ---------- keyboard ---------- */
+
+.keyboard {
+  margin-top: 14px;
+  user-select: none;
+}
+
+.keyboard-row {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.key {
+  font-family: var(--font-greek);
+  font-size: 1.05rem;
+  padding: 10px 0;
+  text-align: center;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.key:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.key.diacritic {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+}
+
+.key.wide { grid-column: span 2; font-family: var(--font-ui); font-size: 0.85rem; }
+
+.key.active-diacritic {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- reference ---------- */
+
+.ref-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.ref-table th, .ref-table td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+.ref-table th { color: var(--text-faint); font-weight: 500; font-size: 0.8rem; }
+
+.search-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1rem;
+  margin-bottom: 14px;
+}
+
+.word-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+
+/* ---------- settings ---------- */
+
+.field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.field-row input[type="number"] {
+  width: 80px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 1rem;
+  text-align: right;
+}
+
+.danger-zone {
+  margin-top: 30px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-danger {
+  background: transparent;
+  border: 1px solid var(--bad);
+  color: var(--bad);
+}
+
+/* ---------- modal / confirm ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  max-width: 360px;
+  width: 100%;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-faint);
+}
+
+/* ---------- practice ---------- */
+
+.practice-bar {
+  height: 4px;
+  background: var(--surface-raised);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.practice-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
+.mc-option.greek-option {
+  font-family: var(--font-greek);
+  font-size: 1.5rem;
+}
+
+/* ---------- practice setup form ---------- */
+
+.setup-group {
+  margin-bottom: 18px;
+}
+
+.setup-group:last-child {
+  margin-bottom: 0;
+}
+
+.setup-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 999px;
+  padding: 9px 15px;
+  font-size: 0.88rem;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chip.selected {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.chip:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+/* ---------- font size control ---------- */
+
+.font-size-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.font-size-controls .btn {
+  padding: 8px 14px;
+  min-width: 52px;
+}
+
+.font-preview {
+  text-align: center;
+  padding: 16px 10px 4px;
+  border-top: 1px dashed var(--border);
+  margin-top: 4px;
+}
+
+/* ---------- version badge ---------- */
+
+.version-badge {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  letter-spacing: 0;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+/* ---------- lesson picker ---------- */
+
+.lesson-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lesson-row.is-locked {
+  opacity: 0.5;
+}
+
+.lesson-row-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.tag.status-done { color: var(--good); border-color: var(--good); }
+.tag.status-next { color: var(--accent); border-color: var(--accent); }
+.tag.status-preview { color: var(--hard); border-color: var(--hard); }
+
+/* Settings rows carrying an explanatory line need the control kept clear of it. */
+.field-row > div:first-child { padding-right: 12px; }
+.field-row .faint { margin-top: 2px; }
