@@ -11,6 +11,7 @@ const PRECACHE_URLS = [
   './app.js',
   './srs.js',
   './data.js',
+  './backup.js',
   './version.js',
   './manifest.json',
   './icons/icon-192.png',

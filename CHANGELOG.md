@@ -7,6 +7,41 @@ every version bump invalidates the offline cache and forces fresh files to load.
 Versioning: minor (`1.x.0`) for new features, patch (`1.0.x`) for fixes.
 **The major version is only ever incremented on the owner's explicit instruction.**
 
+## [1.6.0] — 2026-08-11
+
+### Added
+- **Backup & transfer** (Settings), for moving progress between devices. Progress lives
+  in `localStorage`, which is per-origin and per-device, so a hand-off has to be explicit.
+  - **Export** as a dated `.json` file or straight to the clipboard — the clipboard route
+    matters on a phone, where file handling is awkward.
+  - **Import** from a file or pasted text, with a preview showing current vs incoming vs
+    merged counts *before* anything is touched.
+  - **Merge** combines two devices: union of words and cards, and for any card held by
+    both, the record reflecting more study wins (most recently reviewed, then more
+    reviews, then longer interval). Module completion is ORed, counters take the max,
+    and the earliest introduction date is kept. **Replace** overwrites instead.
+  - Device-local preferences — theme, text size, daily caps, unlock setting — never
+    travel with a backup; they belong to the device in your hand.
+  - The previous state is snapshotted before every import, so **Undo last import** can
+    put it back.
+  - Imports are validated structurally, including every card, and a backup from a newer
+    format version is refused rather than half-applied.
+
+### Fixed
+- **Settings was silently dropping three whole sections.** The `el()` helper returned
+  only `firstElementChild`, but the Settings template had three top-level elements — so
+  the version row, "Clear cached files & reload", and **"Reset all progress"** were never
+  rendered, and the missing-element listener threw. The reset button had been missing
+  since 1.0.0. `el()` now returns a fragment when given multiple roots, preserving all
+  of them.
+
+### Infrastructure
+- Deployed to Vercel with a static, no-build configuration. All assets are served
+  `max-age=0, must-revalidate`: the service worker precaches by plain filename, so a
+  long CDN TTL could let a new worker cache stale JavaScript and defeat the version
+  check. `Service-Worker-Allowed: /` is set on `sw.js`. The private spec and this
+  changelog are excluded from the public deployment.
+
 ## [1.5.0] — 2026-08-10
 
 ### Fixed

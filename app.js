@@ -189,10 +189,15 @@ function buildMcOptions(correct, candidates) {
   return shuffle([correct, ...distractors]);
 }
 
+// Build DOM from a template string. A single root returns that element; several roots
+// return the fragment holding all of them — returning only the first silently dropped
+// every sibling, which is how the Settings danger zone went missing.
 function el(html) {
   const t = document.createElement('template');
   t.innerHTML = html.trim();
-  return t.content.firstElementChild;
+  const roots = t.content.children;
+  if (roots.length === 1) return roots[0];
+  return t.content;
 }
 
 function escapeHtml(s) {
@@ -1805,6 +1810,224 @@ function renderWordsList() {
   return wrap;
 }
 
+/* ============================== Backup & transfer ==============================
+   Progress lives in localStorage, which is per-origin and per-device — so moving
+   between phone and desktop needs an explicit hand-off. Export writes a file (or the
+   clipboard, which is far easier on a phone); import previews what it will do before
+   touching anything, and the previous state is kept so a bad import can be undone. */
+
+const PRE_IMPORT_KEY = 'greekAppState_preImport';
+
+// Parsed-but-not-yet-applied import, held while the user reviews the preview.
+let pendingImport = null;
+
+function backupFilename() {
+  return `textus-progress-${SRS.todayStr()}.json`;
+}
+
+function currentBackupText() {
+  return Backup.serialize(state, APP_VERSION, new Date().toISOString());
+}
+
+function downloadBackup() {
+  const blob = new Blob([currentBackupText()], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = backupFilename();
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+}
+
+async function copyBackupToClipboard() {
+  const text = currentBackupText();
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    // Older iOS Safari and any non-secure context land here.
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch (e2) {
+      return false;
+    }
+  }
+}
+
+function applyImport(mode) {
+  if (!pendingImport) return;
+  const incoming = pendingImport.state;
+  const next = mode === 'merge' ? Backup.mergeStates(state, incoming) : JSON.parse(JSON.stringify(incoming));
+
+  // Device-local preferences never travel with a backup.
+  next.settings = JSON.parse(JSON.stringify(state.settings));
+  next.daily = JSON.parse(JSON.stringify(state.daily));
+  next.version = state.version;
+
+  try {
+    localStorage.setItem(PRE_IMPORT_KEY, JSON.stringify({
+      savedAt: new Date().toISOString(),
+      mode,
+      state: state,
+    }));
+  } catch (e) { /* undo is a convenience; proceed even if the quota rejects it */ }
+
+  state = next;
+  saveState();
+  pendingImport = null;
+  // Reload so loadState's migrations and the SRS unlock pass run over the new data.
+  location.reload();
+}
+
+function hasUndoableImport() {
+  try {
+    return !!localStorage.getItem(PRE_IMPORT_KEY);
+  } catch (e) {
+    return false;
+  }
+}
+
+function undoImport() {
+  let saved;
+  try {
+    saved = JSON.parse(localStorage.getItem(PRE_IMPORT_KEY));
+  } catch (e) {
+    return;
+  }
+  if (!saved || !saved.state) return;
+  state = saved.state;
+  saveState();
+  localStorage.removeItem(PRE_IMPORT_KEY);
+  location.reload();
+}
+
+function renderBackupSection() {
+  const wrap = el(`
+    <div class="card">
+      <h3 style="margin-bottom:4px;">Backup &amp; transfer</h3>
+      <p class="faint" style="margin-top:0;">Progress is stored in this browser only. Export it to move to another device.</p>
+      <div class="setup-label" style="margin-top:16px;">Export</div>
+      <div class="btn-row">
+        <button class="btn" id="btn-export-file" style="flex:1;">Download file</button>
+        <button class="btn" id="btn-export-clip" style="flex:1;">Copy to clipboard</button>
+      </div>
+      <div id="export-note" class="faint" style="margin-top:8px;"></div>
+
+      <div class="setup-label" style="margin-top:20px;">Import</div>
+      <div id="import-area"></div>
+    </div>
+  `);
+
+  const summary = Backup.summarize(state);
+  wrap.querySelector('#export-note').textContent =
+    `${summary.words} words · ${summary.cards} cards · ${summary.lessonsCompleted} lessons · streak ${summary.streak}`;
+
+  wrap.querySelector('#btn-export-file').addEventListener('click', () => {
+    downloadBackup();
+    wrap.querySelector('#export-note').textContent = `Saved as ${backupFilename()}`;
+  });
+  wrap.querySelector('#btn-export-clip').addEventListener('click', async () => {
+    const ok = await copyBackupToClipboard();
+    wrap.querySelector('#export-note').textContent = ok
+      ? 'Copied. Paste it into the Import box on your other device.'
+      : 'Could not reach the clipboard — use Download file instead.';
+  });
+
+  renderImportArea(wrap.querySelector('#import-area'));
+  return wrap;
+}
+
+function renderImportArea(container) {
+  container.innerHTML = '';
+
+  if (pendingImport) {
+    const m = pendingImport.meta;
+    const local = Backup.summarize(state);
+    const merged = Backup.summarize(Backup.mergeStates(state, pendingImport.state));
+    const inc = m.summary;
+    const box = el(`
+      <div class="import-preview">
+        <div class="faint">Backup read successfully${m.exportedAt ? ` — exported ${escapeHtml(m.exportedAt.slice(0, 10))}` : ''}${m.appVersion ? ` from v${escapeHtml(m.appVersion)}` : ''}.</div>
+        <table class="ref-table" style="margin-top:10px;">
+          <thead><tr><th></th><th>Now</th><th>In file</th><th>If merged</th></tr></thead>
+          <tbody>
+            <tr><td>Words</td><td>${local.words}</td><td>${inc.words}</td><td>${merged.words}</td></tr>
+            <tr><td>Cards</td><td>${local.cards}</td><td>${inc.cards}</td><td>${merged.cards}</td></tr>
+            <tr><td>Lessons</td><td>${local.lessonsCompleted}</td><td>${inc.lessonsCompleted}</td><td>${merged.lessonsCompleted}</td></tr>
+            <tr><td>Streak</td><td>${local.streak}</td><td>${inc.streak}</td><td>${merged.streak}</td></tr>
+          </tbody>
+        </table>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn btn-primary" id="btn-do-merge" style="flex:1;">Merge</button>
+          <button class="btn btn-danger" id="btn-do-replace" style="flex:1;">Replace</button>
+        </div>
+        <p class="faint" style="margin-bottom:0;">Merge keeps the further-along record for every card. Replace discards what is on this device.</p>
+        <button class="btn btn-block" id="btn-cancel-import" style="margin-top:10px;">Cancel</button>
+      </div>
+    `);
+    container.appendChild(box);
+    box.querySelector('#btn-do-merge').addEventListener('click', () => applyImport('merge'));
+    box.querySelector('#btn-do-replace').addEventListener('click', () => {
+      if (confirm('Replace all progress on this device with the backup? This cannot be undone except with "Undo last import".')) {
+        applyImport('replace');
+      }
+    });
+    box.querySelector('#btn-cancel-import').addEventListener('click', () => {
+      pendingImport = null;
+      renderImportArea(container);
+    });
+    return;
+  }
+
+  const box = el(`
+    <div>
+      <input type="file" id="import-file" accept="application/json,.json" class="file-input">
+      <div class="faint" style="margin:10px 0 6px;">…or paste a backup:</div>
+      <textarea id="import-text" class="search-input import-text" rows="3" placeholder="Paste backup text here"></textarea>
+      <button class="btn btn-block" id="btn-read-text">Read pasted text</button>
+      <div id="import-error" class="import-error"></div>
+      ${hasUndoableImport() ? '<button class="btn btn-block" id="btn-undo-import" style="margin-top:14px;">Undo last import</button>' : ''}
+    </div>
+  `);
+  container.appendChild(box);
+
+  const showError = (msg) => { box.querySelector('#import-error').textContent = msg || ''; };
+
+  const tryParse = (text) => {
+    const result = Backup.parseBackup(text);
+    if (!result.ok) { showError(result.error); return; }
+    pendingImport = result;
+    renderImportArea(container);
+  };
+
+  box.querySelector('#import-file').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => tryParse(String(reader.result));
+    reader.onerror = () => showError('Could not read that file.');
+    reader.readAsText(file);
+  });
+  box.querySelector('#btn-read-text').addEventListener('click', () => {
+    tryParse(box.querySelector('#import-text').value);
+  });
+  const undoBtn = box.querySelector('#btn-undo-import');
+  if (undoBtn) {
+    undoBtn.addEventListener('click', () => {
+      if (confirm('Restore the progress from before the last import?')) undoImport();
+    });
+  }
+}
+
 /* ============================== Settings ============================== */
 
 function renderSettings() {
@@ -1844,6 +2067,14 @@ function renderSettings() {
         <div class="pron">AN-thro-pos</div>
       </div>
     </div>
+  `);
+  APP_EL.appendChild(card);
+
+  // Backup before the destructive section, so exporting is the obvious step to take
+  // before anything that can lose progress.
+  APP_EL.appendChild(renderBackupSection());
+
+  APP_EL.appendChild(el(`
     <div class="card">
       <div class="field-row" style="border-bottom:none;">
         <span>Version</span>
@@ -1852,11 +2083,14 @@ function renderSettings() {
       <button class="btn btn-block" id="btn-hard-refresh">Clear cached files &amp; reload</button>
       <p class="faint" style="margin-bottom:0;">Forces the newest code to load if the offline cache is serving something stale. Your progress is kept.</p>
     </div>
+  `));
+
+  APP_EL.appendChild(el(`
     <div class="danger-zone">
       <button class="btn btn-danger btn-block" id="btn-reset">Reset all progress</button>
+      <p class="faint">Export a backup first if you might want this back.</p>
     </div>
-  `);
-  APP_EL.appendChild(card);
+  `));
 
   document.getElementById('in-new').addEventListener('change', (e) => {
     state.settings.newPerDay = Math.max(1, parseInt(e.target.value, 10) || 10);
